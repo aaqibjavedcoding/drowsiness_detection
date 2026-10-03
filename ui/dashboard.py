@@ -81,6 +81,11 @@ class DrowsinessDashboard:
         right_frame.pack(side=tk.RIGHT, fill=tk.Y)
         right_frame.pack_propagate(False)
 
+        # Controls + status line are packed FIRST, anchored to the bottom, so
+        # they always get their space and can never be pushed out of view by
+        # the readout/statistics panels above them.
+        self._build_controls(right_frame)
+
         tk.Label(
             right_frame,
             text="Drowsiness Monitor",
@@ -175,43 +180,51 @@ class DrowsinessDashboard:
             value_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
             self.stat_vars[key] = value_label
 
-        # Status / error line
+        # NOTE: the controls and the status line are created *inside*
+        # `_build_ui` but are packed from the BOTTOM of the right-hand panel
+        # **before** the scrollable content above them (see `_build_controls`,
+        # which is called first in `_build_ui`). Tk's packer gives space to the
+        # widgets that were packed first, so packing the buttons last used to
+        # push them outside the visible area on short windows - the window then
+        # looked like it had "no Start button" at all.
+
+    def _build_controls(self, parent):
+        """Status line + Start/Stop/Reset/Exit buttons, pinned to the bottom."""
+        button_frame = tk.Frame(parent, bg=config.PANEL_BG)
+        button_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=14, pady=(6, 14))
+        button_frame.columnconfigure(0, weight=1, uniform="btn")
+        button_frame.columnconfigure(1, weight=1, uniform="btn")
+
         self.status_label = tk.Label(
-            right_frame, text="Idle. Press Start to begin.", bg=config.PANEL_BG,
+            parent, text="Idle. Press Start to begin.", bg=config.PANEL_BG,
             fg="#bbbbbb", font=("Segoe UI", 9, "italic"), wraplength=300,
             justify="left",
         )
-        self.status_label.pack(fill=tk.X, padx=14, pady=(0, 10))
+        self.status_label.pack(side=tk.BOTTOM, fill=tk.X, padx=14, pady=(0, 6))
 
-        # Buttons
-        button_frame = tk.Frame(right_frame, bg=config.PANEL_BG)
-        button_frame.pack(fill=tk.X, padx=14, pady=(4, 14), side=tk.BOTTOM)
+        def make_button(text, command, color, active_color, row, column, state=tk.NORMAL):
+            button = tk.Button(
+                button_frame, text=text, command=command, bg=color, fg="white",
+                activebackground=active_color, activeforeground="white",
+                font=("Segoe UI", 10, "bold"), relief=tk.FLAT, bd=0,
+                highlightthickness=0, cursor="hand2", padx=6, pady=8,
+                state=state,
+            )
+            button.grid(row=row, column=column, padx=4, pady=4, sticky="ew")
+            return button
 
-        self.start_button = tk.Button(
-            button_frame, text="Start", command=self.on_start, bg="#2ecc71",
-            fg="white", font=("Segoe UI", 10, "bold"), relief=tk.FLAT, width=9,
+        self.start_button = make_button(
+            "▶  Start", self.on_start, "#2ecc71", "#27ae60", 0, 0
         )
-        self.start_button.grid(row=0, column=0, padx=3, pady=3)
-
-        self.stop_button = tk.Button(
-            button_frame, text="Stop", command=self.on_stop, bg="#e67e22",
-            fg="white", font=("Segoe UI", 10, "bold"), relief=tk.FLAT, width=9,
-            state=tk.DISABLED,
+        self.stop_button = make_button(
+            "■  Stop", self.on_stop, "#e67e22", "#cf6412", 0, 1, state=tk.DISABLED
         )
-        self.stop_button.grid(row=0, column=1, padx=3, pady=3)
-
-        self.reset_button = tk.Button(
-            button_frame, text="Reset Session", command=self.on_reset,
-            bg="#3498db", fg="white", font=("Segoe UI", 10, "bold"),
-            relief=tk.FLAT, width=12,
+        self.reset_button = make_button(
+            "⟲  Reset Session", self.on_reset, "#3498db", "#2b7fc0", 1, 0
         )
-        self.reset_button.grid(row=1, column=0, padx=3, pady=3)
-
-        self.exit_button = tk.Button(
-            button_frame, text="Exit", command=self.on_exit, bg="#e74c3c",
-            fg="white", font=("Segoe UI", 10, "bold"), relief=tk.FLAT, width=9,
+        self.exit_button = make_button(
+            "✕  Exit", self.on_exit, "#e74c3c", "#c0392b", 1, 1
         )
-        self.exit_button.grid(row=1, column=1, padx=3, pady=3)
 
     # ------------------------------------------------------------------
     # Button handlers
