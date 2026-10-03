@@ -1,0 +1,5 @@
+numpy>=1.23,<2.0
+opencv-contrib-python>=4.9,<5.0
+mediapipe==0.10.21
+pygame>=2.5
+Pillow>=10.0
