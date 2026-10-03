@@ -353,7 +353,11 @@
     els.gauge.style.stroke = isDrowsy ? "#e74c3c" : isWarning ? "#f39c12" : "#2ecc71";
 
     els.flash.classList.toggle("on", isDrowsy);
-    els.noface.classList.toggle("hidden", r.face_found);
+    // Only show the "NO FACE DETECTED" badge once the backend's grace period
+    // (NO_FACE_GRACE_FRAMES) has elapsed. A single missed frame — a blink, a
+    // slight head turn, a compressed/blurry frame — is normal and should not
+    // flash this badge while the face is clearly in view.
+    els.noface.classList.toggle("hidden", !r.no_face_timeout);
 
     if (r.face_found) {
       els.rEar.textContent = r.eye.ear.toFixed(3);
@@ -371,14 +375,18 @@
       els.hudHead.textContent = r.head.label;
       els.hudScore.textContent = Math.round(score);
 
-      if (!r.no_face_timeout) setStatus("Monitoring in progress…");
-    } else {
+      setStatus("Monitoring in progress…");
+    } else if (r.no_face_timeout) {
+      // Only wipe the readouts once we're confident the face is really gone
+      // (grace period elapsed) — not on an isolated missed frame.
       [els.rEar, els.rMar, els.rClosure].forEach((el) => (el.textContent = "--"));
       [els.rEye, els.rMouth, els.rHead].forEach((el) => tagClass(el, "", "--"));
       els.hudEar.textContent = els.hudMar.textContent = "--";
       els.hudHead.textContent = "--";
-      if (r.no_face_timeout) setStatus("No face detected — please face the camera.", true);
+      setStatus("No face detected — please face the camera.", true);
     }
+    // else: a momentary miss within the grace period — keep showing the
+    // last-known values instead of flickering them to "--".
 
     const s = r.stats;
     els.sBlink.textContent = Math.round(s.blink_count);
