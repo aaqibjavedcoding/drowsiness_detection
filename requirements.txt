@@ -3,3 +3,10 @@ opencv-contrib-python>=4.9,<5.0
 mediapipe==0.10.21
 pygame>=2.5
 Pillow>=10.0
+
+# Browser dashboard (python web_app.py). Harmless for the desktop app.
+Flask>=3.0
+
+# Headless servers / containers (no display, no GUI libs) can replace
+# opencv-contrib-python above with:
+#   opencv-contrib-python-headless

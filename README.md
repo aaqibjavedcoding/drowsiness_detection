@@ -41,7 +41,8 @@ Everything runs locally on your machine.
 
 ```text
 drowsiness_detection/
-├── main.py                     # Application entry point
+├── main.py                     # Desktop (Tkinter) entry point
+├── web_app.py                  # Browser dashboard (Flask) entry point
 ├── config.py                   # All tunable thresholds and constants
 ├── requirements.txt
 ├── README.md
@@ -59,6 +60,11 @@ drowsiness_detection/
 │   ├── __init__.py
 │   ├── alarm.py                # pygame alarm sound manager
 │   └── calculations.py         # EAR/MAR math helpers
+├── web/
+│   ├── templates/index.html    # Browser dashboard markup
+│   └── static/
+│       ├── style.css           # Dashboard theme
+│       └── app.js              # Webcam capture + live UI updates
 └── assets/
     └── alarm.wav                # Generated alarm tone
 ```
@@ -81,11 +87,44 @@ drowsiness_detection/
 
 ## Running the Application
 
+There are **two front-ends** on top of the same detection pipeline:
+
+| Mode | Command | Camera source | Use when |
+|------|---------|---------------|----------|
+| Browser dashboard (recommended) | `python web_app.py` → open `http://localhost:5000` | the browser's webcam (`getUserMedia`) | always works, including remote servers, containers, sandboxes and online previews |
+| Desktop dashboard (Tkinter) | `python main.py` | `cv2.VideoCapture(0)` on the same machine | you are sitting at a normal desktop with a local webcam |
+
+### 1. Browser dashboard
+
+```bash
+python web_app.py
+# * Drowsiness dashboard -> http://localhost:5000
+```
+
+Open the URL, press **Start Monitoring** and allow camera access. Frames are
+captured in the browser, posted to the local Flask server as JPEGs, analysed by
+the same MediaPipe/EAR/MAR/head-pose pipeline, and the state comes back as JSON
+roughly 9 times a second. The face mesh is drawn as an overlay on the video, the
+drowsiness score is shown as a ring gauge, and the alarm is a WebAudio tone
+(toggle it with the **Alarm** button). Keyboard: `Space` = start/stop, `R` = reset.
+
+Important: browsers only hand out the webcam on **https://** or on
+**http://localhost**. If you open the page over plain http on a remote IP, or
+inside an embedded preview frame that blocks camera access, the dashboard shows
+an explanatory message with an "Open in a new tab" link instead of silently
+doing nothing.
+
+### 2. Desktop dashboard
+
 From the project root:
 
 ```bash
 python main.py
 ```
+
+This needs a real display **and** a local webcam. On a headless machine
+(no `DISPLAY`, e.g. SSH/containers/sandboxes) `main.py` now exits with a clear
+message pointing you at `python web_app.py` instead of opening a dead window.
 
 A dashboard window opens. Click **Start** to begin monitoring. The left
 panel shows your live webcam feed with the detected face mesh and live
@@ -146,6 +185,17 @@ explaining each one. Typical adjustments:
 - If you have multiple cameras, change `CAMERA_INDEX`.
 
 ## Troubleshooting
+
+- **Window opens but there are no Start/Stop buttons (desktop app)**: fixed —
+  the control row is now packed before the readout/statistics panels, so Tk
+  can no longer push it outside a short window. Resize/maximise the window if
+  you are on a very small screen.
+- **Nothing is clickable and the camera never turns on**: you are almost
+  certainly running the desktop app where there is no display and/or no camera
+  device (server, container, remote preview). Use `python web_app.py` instead.
+- **Browser says the camera is blocked inside a preview frame**: embedded
+  iframes must be granted camera permission by their parent page. Open the
+  dashboard URL in its own browser tab and press Start again.
 
 - **Webcam not detected / "Could not access the webcam"**: close any other
   app using the camera, check OS camera permissions, or try changing
